@@ -5,6 +5,8 @@ import logging
 import matplotlib.pyplot as plt
 import os
 import openai
+from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 import re
 import subprocess
 from pathlib import Path
@@ -109,9 +111,9 @@ def main(cfg):
     # Eureka generation loop
     for iter in range(cfg.iteration):
         rl_runs = []
+        responses = []
         if not os.path.exists(os.path.join(f'env_iter{iter}_response{cfg.sample - 1}.txt')):
             # Get Eureka response
-            responses = []
             response_cur = None
             total_samples = 0
             total_token = 0
@@ -230,8 +232,11 @@ def main(cfg):
                 process_queue.put(process)
             process_queue.put(None)
         else:
-            for _ in range(cfg.sample):
+            for response_id in range(cfg.sample):
                 rl_runs.append(None)
+                with open(f"env_iter{iter}_response{response_id}.py", 'r') as f:
+                    code_string = f.read()
+                    responses.append(ChatCompletion(message=ChatCompletionMessage(content=code_string)))
 
         # Gather RL training results and construct reward reflection
         code_feedbacks = []
