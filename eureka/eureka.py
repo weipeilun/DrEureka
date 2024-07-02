@@ -5,7 +5,7 @@ import logging
 import matplotlib.pyplot as plt
 import os
 import openai
-from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 import re
 import subprocess
@@ -236,7 +236,11 @@ def main(cfg):
                 rl_runs.append(None)
                 with open(f"env_iter{iter}_response{response_id}.py", 'r') as f:
                     code_string = f.read()
-                    responses.append(ChatCompletion(message=ChatCompletionMessage(content=code_string)))
+                    responses.append(
+                        Choice(finish_reason='stop',
+                               index=response_id,
+                               message=ChatCompletionMessage(content=code_string, role='assistant'))
+                    )
 
         # Gather RL training results and construct reward reflection
         code_feedbacks = []
