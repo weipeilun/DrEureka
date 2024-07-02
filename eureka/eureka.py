@@ -136,7 +136,8 @@ def main(cfg):
                             model=model,
                             messages=messages,
                             temperature=cfg.temperature,
-                            n=chunk_size
+                            n=chunk_size,
+                            timeout=cfg.timeout
                         )
                         total_samples += chunk_size
                         break
