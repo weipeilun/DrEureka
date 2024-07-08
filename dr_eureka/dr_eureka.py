@@ -158,6 +158,18 @@ def main(cfg):
     start_signal_queue = Queue()
     threading.Thread(target=check_subprocess_status_thread, args=(process_queue, start_signal_queue)).start()
     for response_id in range(cfg.sample):
+        # block until a process is allowed to start
+        while True:
+            if interrupt.interrupt_callback():
+                logging.info("main thread detect interrupt")
+                exit()
+
+            try:
+                start_signal_queue.get(block=True, timeout=1)
+                break
+            except Empty:
+                continue
+
         response_cur = responses[response_id].message.content
         logging.info(f"Processing Code Run {response_id}")
 
