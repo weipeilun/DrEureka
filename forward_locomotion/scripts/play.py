@@ -76,7 +76,7 @@ def load_env(label, headless=False, dr_config=None, save_video=True):
                         Cfg.env.num_observation_history,
         num_actions=Cfg.env.num_actions)
 
-    weights = logger.load_torch("checkpoints/ac_weights_last.pt")
+    weights = logger.load_torch(label + "/checkpoints/ac_weights_last.pt")
     actor_critic.load_state_dict(state_dict=weights)
     actor_critic.to(env.device)
     policy = actor_critic.act_inference
