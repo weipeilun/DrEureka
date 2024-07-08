@@ -13,6 +13,9 @@ import shutil
 from matplotlib import pyplot as plt
 import pickle as pkl
 import json
+from queue import Queue, Empty
+import threading
+from utils import interrupt
 
 from utils.misc import * 
 from utils.create_task import create_task
@@ -20,6 +23,43 @@ from utils.extract_task_code import *
 
 EUREKA_ROOT_DIR = os.getcwd()
 ROOT_DIR = f"{EUREKA_ROOT_DIR}/.."
+
+
+
+def check_subprocess_status_thread(process_queue, signal_queue, num_process_in_parallel=1):
+    process_cache = []
+    push_signal_cache = []
+    while True:
+        if interrupt.interrupt_callback():
+            logging.info("check_subprocess_status_thread detect interrupt")
+            break
+
+        try:
+            process = process_queue.get(block=False)
+            # all tasks are submitted
+            if process is None:
+                break
+            process_cache.append(process)
+            push_signal_cache.pop()
+        except Empty:
+            pass
+
+        process_finished_cache = []
+        for idx, process in enumerate(process_cache):
+            # check if the process is finished
+            if process.poll() is not None:
+                process_finished_cache.insert(0, idx)
+        for idx in process_finished_cache:
+            process_cache.pop(idx)
+
+        num_process_running = len(process_cache) + len(push_signal_cache)
+        if num_process_running < num_process_in_parallel:
+            for _ in range(num_process_in_parallel - num_process_running):
+                signal_queue.put(None)
+                push_signal_cache.append(None)
+        time.sleep(1)
+    logging.info("check_subprocess_status_thread finished")
+
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.1")
 def main(cfg):
@@ -113,6 +153,10 @@ def main(cfg):
 
     code_runs = [] 
     rl_runs = []
+
+    process_queue = Queue()
+    start_signal_queue = Queue()
+    threading.Thread(target=check_subprocess_status_thread, args=(process_queue, start_signal_queue)).start()
     for response_id in range(cfg.sample):
         response_cur = responses[response_id].message.content
         logging.info(f"Processing Code Run {response_id}")
@@ -162,6 +206,8 @@ def main(cfg):
         block_until_training(rl_filepath, success_keyword=cfg.env.success_keyword, failure_keyword=cfg.env.failure_keyword,
                                 log_status=True, iter_num=None, response_id=response_id)
         rl_runs.append(process)
+        process_queue.put(process)
+    process_queue.put(None)
 
     # Gather RL training results and construct reward reflection
     contents = []
