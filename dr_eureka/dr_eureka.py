@@ -100,13 +100,13 @@ def main(cfg):
             logging.info("Code terminated due to too many failed attempts!")
             exit()
 
-        responses.extend(response_cur["choices"])
-        prompt_tokens = response_cur["usage"]["prompt_tokens"]
-        total_completion_token += response_cur["usage"]["completion_tokens"]
-        total_token += response_cur["usage"]["total_tokens"]
+        responses.extend(response_cur.choices)
+        prompt_tokens = response_cur.usage.prompt_tokens
+        total_completion_token += response_cur.usage.completion_tokens
+        total_token += response_cur.usage.total_tokens
 
     if cfg.sample == 1:
-        logging.info(f"GPT Output:\n " + responses[0]["message"]["content"] + "\n")
+        logging.info(f"GPT Output:\n " + responses[0].message.content + "\n")
 
     # Logging Token Information
     logging.info(f"Prompt Tokens: {prompt_tokens}, Completion Tokens: {total_completion_token}, Total Tokens: {total_token}")
@@ -114,7 +114,7 @@ def main(cfg):
     code_runs = [] 
     rl_runs = []
     for response_id in range(cfg.sample):
-        response_cur = responses[response_id]["message"]["content"]
+        response_cur = responses[response_id].message.content
         logging.info(f"Processing Code Run {response_id}")
 
         # Regex patterns to extract python code enclosed in GPT response
@@ -248,17 +248,17 @@ def main(cfg):
 
     logging.info(f"Max Success: {max_success}, Execute Rate: {execute_rate}, Max Success Reward Correlation: {max_success_reward_correlation}")
     logging.info(f"Best Generation ID: {best_sample_idx}")
-    logging.info(f"GPT Output Content:\n" +  responses[best_sample_idx]["message"]["content"] + "\n")
+    logging.info(f"GPT Output Content:\n" +  responses[best_sample_idx].message.content + "\n")
     logging.info(f"User Content:\n" + best_content + "\n")
 
     np.savez('summary.npz', max_successes=max_successes, execute_rates=execute_rates, best_code_paths=best_code_paths, max_successes_reward_correlation=max_successes_reward_correlation)
 
     if len(messages) == 2:
-        messages += [{"role": "assistant", "content": responses[best_sample_idx]["message"]["content"]}]
+        messages += [{"role": "assistant", "content": responses[best_sample_idx].message.content}]
         messages += [{"role": "user", "content": best_content}]
     else:
         assert len(messages) == 4
-        messages[-2] = {"role": "assistant", "content": responses[best_sample_idx]["message"]["content"]}
+        messages[-2] = {"role": "assistant", "content": responses[best_sample_idx].message.content}
         messages[-1] = {"role": "user", "content": best_content}
 
     # Save dictionary as JSON file
