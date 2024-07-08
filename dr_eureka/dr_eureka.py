@@ -3,6 +3,7 @@ import base64
 import io
 from PIL import Image
 import hydra
+import yaml
 import logging
 import openai
 import os
@@ -26,14 +27,19 @@ def main(cfg):
     logging.info(f"Workspace: {workspace_dir}")
     logging.info(f"Project Root: {EUREKA_ROOT_DIR}")
 
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-
     task = cfg.env.task
     task_description = cfg.env.description
     model = cfg.model
     logging.info(f"Using LLM: {model}")
     logging.info("Task: " + task)
     logging.info("Task description: " + task_description)
+
+    model_name = cfg.model
+    llm_config_path = os.path.expanduser('~/.metagpt/config2.yaml')
+    assert os.path.exists(llm_config_path), f"Model config file not found at {llm_config_path}"
+    with open(llm_config_path, 'r') as f:
+        llm_config_dict = yaml.safe_load(f)
+    llm_config = llm_config_dict['llms'][model_name]
 
     env_name = cfg.env.env_name
     dr_template_file = f'{ROOT_DIR}/{env_name}/{cfg.env.dr_template_file}'
@@ -71,11 +77,16 @@ def main(cfg):
             break
         for attempt in range(3):
             try:
-                response_cur = openai.ChatCompletion.create(
+                openai_client = openai.OpenAI(api_key=llm_config['api_key'],
+                                              base_url=llm_config['base_url']
+                                              )
+
+                response_cur = openai_client.chat.completions.create(
                     model=model,
                     messages=messages,
                     temperature=cfg.temperature,
-                    n=chunk_size
+                    n=chunk_size,
+                    timeout=llm_config['timeout']
                 )
                 total_samples += chunk_size
                 break
