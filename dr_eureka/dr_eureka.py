@@ -110,6 +110,10 @@ def main(cfg):
     total_completion_token = 0
     chunk_size = cfg.sample if "gpt-3.5" in model else 4
 
+    process_queue = Queue()
+    start_signal_queue = Queue()
+    threading.Thread(target=check_subprocess_status_thread, args=(process_queue, start_signal_queue)).start()
+
     logging.info(f"Generating {cfg.sample} samples with {cfg.model}")
 
     while True:
@@ -153,10 +157,6 @@ def main(cfg):
 
     code_runs = [] 
     rl_runs = []
-
-    process_queue = Queue()
-    start_signal_queue = Queue()
-    threading.Thread(target=check_subprocess_status_thread, args=(process_queue, start_signal_queue)).start()
     for response_id in range(cfg.sample):
         # block until a process is allowed to start
         while True:
